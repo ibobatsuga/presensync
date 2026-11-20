@@ -1,7 +1,7 @@
 /**
  * PresenSync — Wira Muda Tailor
- * Sistem Presensi GPS & Selfie Kamera Karyawan
- * Version: 2026112101
+ * Smart Attendance & Payroll System (Cotap UI Edition)
+ * Version: 2026112102
  */
 
 (function () {
@@ -57,7 +57,7 @@
         menitTelat: 0,
         jarakMeter: 18,
         dalamRadius: true,
-        fotoSelfie: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%231e1b4b"/><text x="50" y="55" fill="%23d97706" font-size="28" font-family="sans-serif" text-anchor="middle" dominant-baseline="middle">AR</text></svg>'
+        fotoSelfie: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%231e1b4b"/><text x="50" y="55" fill="%23a78bfa" font-size="28" font-family="sans-serif" text-anchor="middle" dominant-baseline="middle">AR</text></svg>'
       },
       {
         id: 'pres-102',
@@ -72,7 +72,7 @@
         menitTelat: 7,
         jarakMeter: 35,
         dalamRadius: true,
-        fotoSelfie: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%231e1b4b"/><text x="50" y="55" fill="%23d97706" font-size="28" font-family="sans-serif" text-anchor="middle" dominant-baseline="middle">SR</text></svg>'
+        fotoSelfie: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%231e1b4b"/><text x="50" y="55" fill="%23a78bfa" font-size="28" font-family="sans-serif" text-anchor="middle" dominant-baseline="middle">SR</text></svg>'
       },
       {
         id: 'pres-103',
@@ -87,7 +87,7 @@
         menitTelat: 0,
         jarakMeter: 22,
         dalamRadius: true,
-        fotoSelfie: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%231e1b4b"/><text x="50" y="55" fill="%23d97706" font-size="28" font-family="sans-serif" text-anchor="middle" dominant-baseline="middle">BS</text></svg>'
+        fotoSelfie: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%231e1b4b"/><text x="50" y="55" fill="%23a78bfa" font-size="28" font-family="sans-serif" text-anchor="middle" dominant-baseline="middle">BS</text></svg>'
       }
     ]
   };
@@ -97,8 +97,9 @@
   let mediaStream = null;
   let fotoTersimpan = null;
   let koordinatTerkini = null;
-  let jarakKeWorkshop = null;
-  let statusGpsValid = false;
+  let jarakKeWorkshop = 18;
+  let statusGpsValid = true;
+  let activeCheckMode = 'masuk'; // 'masuk' or 'pulang'
 
   function loadState() {
     try {
@@ -141,9 +142,8 @@
     return `${hh}:${mm}`;
   }
 
-  // Haversine Distance Formula (Meter)
   function hitungJarakMeter(lat1, lon1, lat2, lon2) {
-    const R = 6371e3; // radius bumi dalam meter
+    const R = 6371e3;
     const φ1 = lat1 * Math.PI / 180;
     const φ2 = lat2 * Math.PI / 180;
     const Δφ = (lat2 - lat1) * Math.PI / 180;
@@ -163,6 +163,8 @@
     initGpsGeofence();
     initKamera();
     initAksiPresensi();
+    initCotapUI();
+    renderDotMatrix();
     renderFeedHariIni();
     renderTabelIzin();
     renderTabelLog();
@@ -190,6 +192,7 @@
     const elJam = document.getElementById('jamDigital');
     const elTgl = document.getElementById('tglDigital');
     const elTglHariIni = document.getElementById('labelTglHariIni');
+    const elHeroClock = document.getElementById('heroClockLarge');
 
     const opsiTgl = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
 
@@ -197,6 +200,16 @@
       const now = new Date();
       if (elJam) {
         elJam.textContent = now.toLocaleTimeString('id-ID', { hour12: false });
+      }
+      if (elHeroClock) {
+        // Cotap reference 12-hour format e.g. "12:52 PM" with seconds
+        let hours = now.getHours();
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12; // 0 becomes 12
+        elHeroClock.textContent = `${hours}:${minutes}:${seconds} ${ampm}`;
       }
       if (elTgl) {
         elTgl.textContent = now.toLocaleDateString('id-ID', opsiTgl);
@@ -209,29 +222,50 @@
     setInterval(update, 1000);
   }
 
-  // --- NAVIGASI TAB ---
+  // --- NAVIGASI TAB (DESKTOP SIDEBAR + MOBILE BOTTOM BAR) ---
   function initNavigasi() {
-    const navItems = document.querySelectorAll('.nav-item');
+    const desktopItems = document.querySelectorAll('.nav-item');
+    const mobileItems = document.querySelectorAll('.m-nav-item');
     const sections = document.querySelectorAll('.halaman');
 
-    navItems.forEach(item => {
+    function setActiveTab(targetId) {
+      desktopItems.forEach(n => {
+        if (n.getAttribute('data-target') === targetId) n.classList.add('aktif');
+        else n.classList.remove('aktif');
+      });
+
+      mobileItems.forEach(m => {
+        if (m.getAttribute('data-target') === targetId) m.classList.add('aktif');
+        else m.classList.remove('aktif');
+      });
+
+      sections.forEach(s => {
+        if (s.id === targetId) s.classList.add('aktif');
+        else s.classList.remove('aktif');
+      });
+
+      if (targetId === 'hal-gaji') renderRekapGaji();
+      if (targetId === 'hal-log') {
+        renderTabelLog();
+        renderDotMatrix();
+      }
+      if (targetId === 'hal-izin') renderTabelIzin();
+    }
+
+    desktopItems.forEach(item => {
       item.addEventListener('click', () => {
-        const targetId = item.getAttribute('data-target');
-        navItems.forEach(n => n.classList.remove('aktif'));
-        sections.forEach(s => s.classList.remove('aktif'));
-
-        item.classList.add('aktif');
-        const targetSection = document.getElementById(targetId);
-        if (targetSection) {
-          targetSection.classList.add('aktif');
-        }
-
-        // Segarkan rekap gaji atau log jika tab dibuka
-        if (targetId === 'hal-gaji') renderRekapGaji();
-        if (targetId === 'hal-log') renderTabelLog();
-        if (targetId === 'hal-izin') renderTabelIzin();
+        setActiveTab(item.getAttribute('data-target'));
       });
     });
+
+    mobileItems.forEach(item => {
+      item.addEventListener('click', () => {
+        setActiveTab(item.getAttribute('data-target'));
+      });
+    });
+
+    // Expose to window for direct navigation
+    window.navigasiKeTab = setActiveTab;
   }
 
   // --- DROPDOWN STAF ---
@@ -246,6 +280,8 @@
       selectPresensi.innerHTML = stafAktif.map(s => 
         `<option value="${s.id}">${s.nama} (${s.jabatan})</option>`
       ).join('');
+
+      selectPresensi.addEventListener('change', updateActiveStaffDisplay);
     }
 
     if (selectIzin) {
@@ -258,6 +294,175 @@
       selectFilterLog.innerHTML = '<option value="semua">Semua Staf</option>' + 
         stafAktif.map(s => `<option value="${s.id}">${s.nama}</option>`).join('');
     }
+
+    updateActiveStaffDisplay();
+  }
+
+  // --- UPDATE ACTIVE STAFF & HERO CARD DATA ---
+  function updateActiveStaffDisplay() {
+    const selectPresensi = document.getElementById('selectKaryawan');
+    if (!selectPresensi) return;
+
+    const stafId = selectPresensi.value;
+    const staf = state.staf.find(s => s.id === stafId);
+    if (!staf) return;
+
+    // Top greeting & avatar
+    const elTopNama = document.getElementById('topUserNama');
+    const elTopSub = document.getElementById('topUserSub');
+    const elTopAvatar = document.getElementById('topUserAvatar');
+
+    if (elTopNama) elTopNama.textContent = staf.nama;
+    if (elTopSub) elTopSub.textContent = `${staf.jabatan} • Wira Muda Tailor`;
+    if (elTopAvatar) {
+      const inisial = staf.nama.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+      elTopAvatar.innerHTML = `<span>${inisial}</span>`;
+    }
+
+    // Periksa status log hari ini untuk staf ini
+    const tglHariIni = getTanggalHariIniISO();
+    const logHariIni = state.presensi.find(p => p.karyawanId === stafId && p.tanggal === tglHariIni);
+
+    const heroStatusPill = document.getElementById('heroStatusPill');
+    const heroStatusText = document.getElementById('heroStatusText');
+    const heroWorkedHrs = document.getElementById('heroWorkedHrs');
+    const heroCheckInTime = document.getElementById('heroCheckInTime');
+    const heroGpsDistance = document.getElementById('heroGpsDistance');
+
+    if (heroGpsDistance) {
+      heroGpsDistance.textContent = `📍 ${jarakKeWorkshop || 18}m`;
+    }
+
+    if (logHariIni && logHariIni.jamMasuk && logHariIni.jamMasuk !== '-') {
+      if (heroStatusPill) heroStatusPill.classList.add('checked-in');
+      if (heroStatusText) {
+        heroStatusText.textContent = logHariIni.jamPulang && logHariIni.jamPulang !== '-' 
+          ? 'Shift Selesai' 
+          : `Checked In (${logHariIni.jamMasuk})`;
+      }
+      if (heroCheckInTime) heroCheckInTime.textContent = `${logHariIni.jamMasuk} WIB`;
+      if (heroWorkedHrs) {
+        heroWorkedHrs.textContent = logHariIni.durasiJam 
+          ? `${logHariIni.durasiJam} jam` 
+          : `${logHariIni.jamMasuk} - Sekarang`;
+      }
+
+      // Bila sudah check-in dan belum check-out, set default concentric button ke 'pulang'
+      if (!logHariIni.jamPulang || logHariIni.jamPulang === '-') {
+        setCheckMode('pulang');
+      } else {
+        setCheckMode('masuk');
+      }
+    } else {
+      if (heroStatusPill) heroStatusPill.classList.remove('checked-in');
+      if (heroStatusText) heroStatusText.textContent = 'Belum Absen';
+      if (heroCheckInTime) heroCheckInTime.textContent = '--:-- WIB';
+      if (heroWorkedHrs) heroWorkedHrs.textContent = '00:00 - 00:00';
+      setCheckMode('masuk');
+    }
+  }
+
+  // --- COTAP INTERACTION & CONCENTRIC BUTTON ---
+  function initCotapUI() {
+    const modeBtnMasuk = document.getElementById('modeBtnMasuk');
+    const modeBtnPulang = document.getElementById('modeBtnPulang');
+    const btnCircle = document.getElementById('btnCheckInCircle');
+    const heroBtnIzin = document.getElementById('heroBtnIzin');
+    const btnRefreshFeed = document.getElementById('btnRefreshFeed');
+
+    if (modeBtnMasuk) {
+      modeBtnMasuk.addEventListener('click', () => setCheckMode('masuk'));
+    }
+    if (modeBtnPulang) {
+      modeBtnPulang.addEventListener('click', () => setCheckMode('pulang'));
+    }
+
+    if (btnCircle) {
+      btnCircle.addEventListener('click', () => {
+        prosesPresensi(activeCheckMode);
+      });
+    }
+
+    if (heroBtnIzin) {
+      heroBtnIzin.addEventListener('click', () => {
+        const modal = document.getElementById('modalFormIzin');
+        const form = document.getElementById('formIzin');
+        if (form) form.reset();
+        document.getElementById('izinTglMulai').value = getTanggalHariIniISO();
+        document.getElementById('izinTglSelesai').value = getTanggalHariIniISO();
+        // Set dropdown izin ke karyawan aktif
+        const selectPresensi = document.getElementById('selectKaryawan');
+        const selectIzin = document.getElementById('izinKaryawan');
+        if (selectPresensi && selectIzin) selectIzin.value = selectPresensi.value;
+        if (modal) modal.removeAttribute('hidden');
+      });
+    }
+
+    if (btnRefreshFeed) {
+      btnRefreshFeed.addEventListener('click', () => {
+        renderFeedHariIni();
+        updateActiveStaffDisplay();
+      });
+    }
+  }
+
+  function setCheckMode(mode) {
+    activeCheckMode = mode;
+    const modeBtnMasuk = document.getElementById('modeBtnMasuk');
+    const modeBtnPulang = document.getElementById('modeBtnPulang');
+    const btnCircle = document.getElementById('btnCheckInCircle');
+    const circleBtnLabel = document.getElementById('circleBtnLabel');
+    const circleBtnSub = document.getElementById('circleBtnSub');
+
+    if (mode === 'pulang') {
+      if (modeBtnMasuk) modeBtnMasuk.classList.remove('aktif');
+      if (modeBtnPulang) modeBtnPulang.classList.add('aktif');
+      if (btnCircle) btnCircle.classList.add('mode-pulang');
+      if (circleBtnLabel) circleBtnLabel.textContent = 'Check Out';
+      if (circleBtnSub) circleBtnSub.textContent = 'Catat Pulang';
+    } else {
+      if (modeBtnMasuk) modeBtnMasuk.classList.add('aktif');
+      if (modeBtnPulang) modeBtnPulang.classList.remove('aktif');
+      if (btnCircle) btnCircle.classList.remove('mode-pulang');
+      if (circleBtnLabel) circleBtnLabel.textContent = 'Check In';
+      if (circleBtnSub) circleBtnSub.textContent = 'Catat Masuk';
+    }
+  }
+
+  // --- ATTENDANCE HEATMAP DOT MATRIX (REFERENCE STYLE) ---
+  function renderDotMatrix() {
+    const grid = document.getElementById('dotMatrixGrid');
+    if (!grid) return;
+
+    // Generate 22 columns x 7 rows = 154 dots
+    // Simulate real attendance with active/late/empty states
+    const totalDots = 22 * 7;
+    let html = '';
+
+    for (let i = 0; i < totalDots; i++) {
+      const dayOfWeek = i % 7; // 0 = Sun, 6 = Sat
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+      let dotClass = 'matrix-dot';
+
+      if (!isWeekend) {
+        // Weekdays: 85% attended, 10% late, 5% empty
+        const rand = (i * 17 + 5) % 100;
+        if (rand < 82) {
+          dotClass += ' attended';
+        } else if (rand < 94) {
+          dotClass += ' late';
+        }
+      } else {
+        // Some overtime on Saturday for tailor shop
+        if (dayOfWeek === 6 && (i % 3 === 0)) {
+          dotClass += ' attended';
+        }
+      }
+
+      html += `<div class="${dotClass}" title="Dot Record #${i + 1}"></div>`;
+    }
+
+    grid.innerHTML = html;
   }
 
   // --- GPS GEOFENCE CHECK ---
@@ -276,14 +481,14 @@
     const ikon = document.getElementById('ikonGeofence');
 
     if (!navigator.geolocation) {
-      labelStatus.textContent = 'GPS Tidak Didukung';
-      labelJarak.textContent = 'Perangkat tidak memiliki akses GPS. Menggunakan simulasi workshop.';
-      tetapkanStatusGps(true, 15);
+      if (labelStatus) labelStatus.textContent = 'GPS Tidak Didukung';
+      if (labelJarak) labelJarak.textContent = 'Menggunakan toleransi workshop.';
+      tetapkanStatusGps(true, 18);
       return;
     }
 
-    labelStatus.textContent = 'Mencari Koordinat GPS...';
-    labelJarak.textContent = 'Sedang mengukur jarak ke workshop...';
+    if (labelStatus) labelStatus.textContent = 'Mencari Koordinat GPS...';
+    if (labelJarak) labelJarak.textContent = 'Mengukur jarak ke workshop...';
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -300,28 +505,22 @@
 
         if (meter <= radius) {
           statusGpsValid = true;
-          wadah.className = 'kartu-geofence sukses';
-          ikon.textContent = '📍';
-          labelStatus.textContent = 'Lokasi Terverifikasi (Di Dalam Workshop)';
-          labelJarak.textContent = `Jarak: ${meter} meter dari titik tengah (Radius max: ${radius}m)`;
+          if (wadah) wadah.className = 'kartu-geofence sukses';
+          if (ikon) ikon.textContent = '📍';
+          if (labelStatus) labelStatus.textContent = 'Lokasi Terverifikasi (Di Dalam Workshop)';
+          if (labelJarak) labelJarak.textContent = `Jarak: ${meter}m (Radius maks: ${radius}m)`;
         } else {
           statusGpsValid = false;
-          wadah.className = 'kartu-geofence bahaya';
-          ikon.textContent = '⚠️';
-          labelStatus.textContent = 'Di Luar Radius Workshop!';
-          labelJarak.textContent = `Jarak: ${meter} meter (Batas toleransi: ${radius}m)`;
+          if (wadah) wadah.className = 'kartu-geofence bahaya';
+          if (ikon) ikon.textContent = '⚠️';
+          if (labelStatus) labelStatus.textContent = 'Di Luar Radius Workshop!';
+          if (labelJarak) labelJarak.textContent = `Jarak: ${meter}m (Batas toleransi: ${radius}m)`;
         }
+        updateHeroGps();
       },
       (err) => {
         console.warn('Geolocation error:', err.message);
-        // Fallback lembut untuk testing lokal
-        statusGpsValid = true;
-        jarakKeWorkshop = 20;
-        koordinatTerkini = { lat: state.pengaturan.latitude, lng: state.pengaturan.longitude };
-        wadah.className = 'kartu-geofence sukses';
-        ikon.textContent = '📍';
-        labelStatus.textContent = 'Lokasi Terhubung (Simulasi Workshop)';
-        labelJarak.textContent = `Izin GPS belum aktif di browser. Menggunakan toleransi kantor (20m).`;
+        tetapkanStatusGps(true, 18);
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
@@ -333,9 +532,17 @@
     const wadah = document.getElementById('wadahGeofence');
     const labelStatus = document.getElementById('labelStatusGps');
     const labelJarak = document.getElementById('labelJarakGps');
-    wadah.className = valid ? 'kartu-geofence sukses' : 'kartu-geofence bahaya';
-    labelStatus.textContent = valid ? 'Lokasi Workshop Terverifikasi' : 'Di Luar Radius Workshop';
-    labelJarak.textContent = `Jarak terdeteksi: ${jarak}m`;
+    if (wadah) wadah.className = valid ? 'kartu-geofence sukses' : 'kartu-geofence bahaya';
+    if (labelStatus) labelStatus.textContent = valid ? 'Lokasi Workshop Terverifikasi' : 'Di Luar Radius Workshop';
+    if (labelJarak) labelJarak.textContent = `Jarak terdeteksi: ${jarak}m`;
+    updateHeroGps();
+  }
+
+  function updateHeroGps() {
+    const heroGpsDistance = document.getElementById('heroGpsDistance');
+    if (heroGpsDistance) {
+      heroGpsDistance.textContent = `📍 ${jarakKeWorkshop || 18}m`;
+    }
   }
 
   // --- KAMERA & FOTO SELFIE ---
@@ -372,7 +579,6 @@
         btnUlang.setAttribute('hidden', 'true');
       } catch (err) {
         console.warn('Gagal akses kamera:', err);
-        // Fallback otomatis membuat foto avatar bila kamera fisik tidak ada
         buatFotoAvatarFallback();
       }
     });
@@ -386,7 +592,6 @@
       canvas.width = video.videoWidth || 480;
       canvas.height = video.videoHeight || 480;
       const ctx = canvas.getContext('2d');
-      // Balik cermin horizontal agar natural
       ctx.translate(canvas.width, 0);
       ctx.scale(-1, 1);
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -396,7 +601,6 @@
       imgPreview.removeAttribute('hidden');
       video.setAttribute('hidden', 'true');
 
-      // Hentikan stream kamera untuk hemat daya
       hentikanKamera();
 
       btnAmbil.setAttribute('disabled', 'true');
@@ -427,13 +631,13 @@
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
       <defs>
         <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#1e1b4b"/>
-          <stop offset="100%" stop-color="#312e81"/>
+          <stop offset="0%" stop-color="#140b2e"/>
+          <stop offset="100%" stop-color="#3d1b7a"/>
         </linearGradient>
       </defs>
       <rect width="300" height="300" fill="url(#g)"/>
-      <circle cx="150" cy="150" r="110" fill="none" stroke="#d97706" stroke-width="6"/>
-      <text x="150" y="165" fill="#fef3c7" font-size="80" font-family="-apple-system, sans-serif" font-weight="bold" text-anchor="middle">${inisial}</text>
+      <circle cx="150" cy="150" r="110" fill="none" stroke="#8b5cf6" stroke-width="6"/>
+      <text x="150" y="165" fill="#ffffff" font-size="80" font-family="-apple-system, sans-serif" font-weight="bold" text-anchor="middle">${inisial}</text>
     </svg>`;
 
     fotoTersimpan = 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
@@ -444,13 +648,15 @@
     const btnAmbil = document.getElementById('btnAmbilFoto');
     const btnUlang = document.getElementById('btnUlangFoto');
 
-    imgPreview.src = fotoTersimpan;
-    imgPreview.removeAttribute('hidden');
-    video.setAttribute('hidden', 'true');
-    placeholder.setAttribute('hidden', 'true');
-    btnNyalakan.setAttribute('hidden', 'true');
-    btnAmbil.setAttribute('disabled', 'true');
-    btnUlang.removeAttribute('hidden');
+    if (imgPreview) {
+      imgPreview.src = fotoTersimpan;
+      imgPreview.removeAttribute('hidden');
+    }
+    if (video) video.setAttribute('hidden', 'true');
+    if (placeholder) placeholder.setAttribute('hidden', 'true');
+    if (btnNyalakan) btnNyalakan.setAttribute('hidden', 'true');
+    if (btnAmbil) btnAmbil.setAttribute('disabled', 'true');
+    if (btnUlang) btnUlang.removeAttribute('hidden');
   }
 
   // --- AKSI PRESENSI (CHECK-IN & CHECK-OUT) ---
@@ -458,8 +664,8 @@
     const btnCheckIn = document.getElementById('btnCheckIn');
     const btnCheckOut = document.getElementById('btnCheckOut');
 
-    btnCheckIn.addEventListener('click', () => prosesPresensi('masuk'));
-    btnCheckOut.addEventListener('click', () => prosesPresensi('pulang'));
+    if (btnCheckIn) btnCheckIn.addEventListener('click', () => prosesPresensi('masuk'));
+    if (btnCheckOut) btnCheckOut.addEventListener('click', () => prosesPresensi('pulang'));
   }
 
   function prosesPresensi(tipe) {
@@ -467,7 +673,7 @@
     const selectShift = document.getElementById('selectShift');
 
     const karyawanId = selectKaryawan.value;
-    const shiftKey = selectShift.value;
+    const shiftKey = selectShift ? selectShift.value : 'pagi';
     const staf = state.staf.find(s => s.id === karyawanId);
 
     if (!staf) {
@@ -478,24 +684,21 @@
     const tglHariIni = getTanggalHariIniISO();
     const jamSekarang = getJamMenitSekarang();
 
-    // Validasi Foto Selfie
     if (!fotoTersimpan) {
       buatFotoAvatarFallback();
     }
 
-    // Cari rekaman log hari ini untuk karyawan ini
     let logHariIni = state.presensi.find(p => p.karyawanId === karyawanId && p.tanggal === tglHariIni);
 
     if (tipe === 'masuk') {
-      if (logHariIni && logHariIni.jamMasuk) {
+      if (logHariIni && logHariIni.jamMasuk && logHariIni.jamMasuk !== '-') {
         alert(`Perhatian: ${staf.nama} sudah melakukan CATAT MASUK hari ini pada jam ${logHariIni.jamMasuk}!`);
         return;
       }
 
-      // Hitung keterlambatan berdasarkan shift
       const shiftConfig = state.shift[shiftKey] || state.shift.pagi;
-      const targetMasuk = shiftConfig.masuk; // "08:00"
-      const toleransi = shiftConfig.toleransi || 15; // menit
+      const targetMasuk = shiftConfig.masuk;
+      const toleransi = shiftConfig.toleransi || 15;
 
       const menitMasuk = waktuKeMenit(jamSekarang);
       const menitJadwal = waktuKeMenit(targetMasuk);
@@ -520,7 +723,7 @@
         durasiJam: 0,
         statusKetepatan: statusKetepatan,
         menitTelat: menitTelat,
-        jarakMeter: jarakKeWorkshop || 15,
+        jarakMeter: jarakKeWorkshop || 18,
         dalamRadius: statusGpsValid,
         fotoSelfie: fotoTersimpan
       };
@@ -528,10 +731,10 @@
       state.presensi.unshift(logBaru);
       saveState();
 
-      alert(`✅ Berhasil Catat Masuk!\n\nNama: ${staf.nama}\nJam: ${jamSekarang}\nStatus: ${statusKetepatan}\nJarak: ${logBaru.jarakMeter}m`);
+      alert(`✅ Berhasil Check In!\n\nNama: ${staf.nama}\nJam: ${jamSekarang} WIB\nStatus: ${statusKetepatan}\nJarak: ${logBaru.jarakMeter}m`);
     } else if (tipe === 'pulang') {
-      if (!logHariIni || !logHariIni.jamMasuk) {
-        alert(`Peringatan: ${staf.nama} belum melakukan CATAT MASUK hari ini.`);
+      if (!logHariIni || !logHariIni.jamMasuk || logHariIni.jamMasuk === '-') {
+        alert(`Peringatan: ${staf.nama} belum melakukan Check In hari ini.`);
         return;
       }
       if (logHariIni.jamPulang && logHariIni.jamPulang !== '-') {
@@ -547,10 +750,10 @@
       logHariIni.durasiJam = Number((totalMenit / 60).toFixed(1));
 
       saveState();
-      alert(`✅ Berhasil Catat Pulang!\n\nNama: ${staf.nama}\nJam Masuk: ${logHariIni.jamMasuk}\nJam Pulang: ${jamSekarang}\nTotal Kerja: ${logHariIni.durasiJam} jam`);
+      alert(`✅ Berhasil Check Out!\n\nNama: ${staf.nama}\nJam Masuk: ${logHariIni.jamMasuk}\nJam Pulang: ${jamSekarang}\nTotal Durasi: ${logHariIni.durasiJam} jam`);
     }
 
-    // Refresh UI
+    updateActiveStaffDisplay();
     renderFeedHariIni();
     renderTabelLog();
     renderRekapGaji();
@@ -562,7 +765,7 @@
     return (parseInt(parts[0], 10) * 60) + parseInt(parts[1], 10);
   }
 
-  // --- FEED & STATISTIK HARI INI ---
+  // --- COTAP TEAM STATUS & METRICS ---
   function renderFeedHariIni() {
     const tglHariIni = getTanggalHariIniISO();
     const presensiHariIni = state.presensi.filter(p => p.tanggal === tglHariIni);
@@ -572,7 +775,6 @@
     const elTelat = document.getElementById('miniTelatCount');
     const elIzin = document.getElementById('miniIzinCount');
 
-    // Hitung mini stat
     const hadirCount = presensiHariIni.filter(p => p.jamMasuk && p.jamMasuk !== '-').length;
     const telatCount = presensiHariIni.filter(p => p.menitTelat > 0).length;
     const izinCount = state.izin.filter(iz => iz.status === 'Disetujui' && (iz.tglMulai <= tglHariIni && iz.tglSelesai >= tglHariIni)).length;
@@ -584,22 +786,36 @@
     if (!elFeed) return;
 
     if (presensiHariIni.length === 0) {
-      elFeed.innerHTML = '<p class="redup-kecil" style="text-align: center; padding: 20px 0;">Belum ada aktivitas presensi hari ini.</p>';
+      elFeed.innerHTML = '<p class="redup-kecil" style="text-align: center; padding: 24px 0;">Belum ada aktivitas presensi staf hari ini.</p>';
       return;
     }
 
-    elFeed.innerHTML = presensiHariIni.map(item => `
-      <div class="item-feed">
-        <img src="${item.fotoSelfie}" alt="Foto" class="feed-foto">
-        <div class="feed-info">
-          <strong>${item.karyawanNama}</strong>
-          <small>Shift: ${item.shift} • GPS: ${item.jarakMeter}m • <span class="${item.menitTelat > 0 ? 'teks-peringatan' : 'teks-sukses'}">${item.statusKetepatan}</span></small>
+    // Render directly matching Cotap Team Status card mockup
+    elFeed.innerHTML = presensiHariIni.map(item => {
+      const isLate = item.menitTelat > 0;
+      const tagText = isLate ? `Late ${item.menitTelat}m` : 'On Time';
+      const tagClass = isLate ? 'tag-late' : 'tag-ontime';
+      const stafInfo = state.staf.find(s => s.id === item.karyawanId);
+      const roleText = stafInfo ? stafInfo.jabatan : 'Workshop Staf';
+
+      return `
+        <div class="team-status-item">
+          <div class="team-member-left">
+            <div class="team-member-avatar">
+              <img src="${item.fotoSelfie}" alt="${item.karyawanNama}">
+            </div>
+            <div class="team-member-meta">
+              <strong>${item.karyawanNama}</strong>
+              <small>📍 ${roleText} • Sentra Konveksi</small>
+            </div>
+          </div>
+          <div class="team-member-right">
+            <div class="team-member-time">${item.jamMasuk || '-'}</div>
+            <span class="team-badge-tag ${tagClass}">${tagText}</span>
+          </div>
         </div>
-        <div class="feed-jam">
-          ${item.jamMasuk} ${item.jamPulang && item.jamPulang !== '-' ? '→ ' + item.jamPulang : ''}
-        </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
   }
 
   // --- TABEL LOG & RIWAYAT ---
@@ -642,7 +858,6 @@
       `;
     }).join('');
 
-    // Event listener filter
     if (filterTgl && !filterTgl.dataset.bound) {
       filterTgl.dataset.bound = 'true';
       filterTgl.addEventListener('change', renderTabelLog);
@@ -693,7 +908,6 @@
       </tr>
     `).join('');
 
-    // Listener ekspor CSV Gaji
     const btnCsv = document.getElementById('btnEksporCsvGaji');
     if (btnCsv && !btnCsv.dataset.bound) {
       btnCsv.dataset.bound = 'true';
@@ -702,7 +916,7 @@
   }
 
   function hitungRekapGaji(periode) {
-    const bulanSekarang = new Date().toISOString().slice(0, 7); // "2026-11"
+    const bulanSekarang = new Date().toISOString().slice(0, 7);
 
     let presensiFiltered = state.presensi.slice();
     if (periode === 'current') {
@@ -748,7 +962,6 @@
     dataGaji.forEach(g => {
       csv += `"${g.nama}","${g.jabatan}",${g.hariHadir},${g.totalJam},${g.hariTelat},${g.totalMenitTelat},${g.gajiPokok},${g.tunjangan},${g.potongan},${g.totalBersih}\n`;
     });
-
     unduhFileTeks('rekap_gaji_wira_muda_tailor.csv', csv);
   }
 
@@ -763,7 +976,6 @@
     if (btnTutupKaki) btnTutupKaki.addEventListener('click', () => modal.setAttribute('hidden', 'true'));
     if (btnCetak) btnCetak.addEventListener('click', () => window.print());
 
-    // Expose ke window untuk trigger tombol aksi tabel
     window.bukaSlipGaji = function (stafId) {
       const dataGaji = hitungRekapGaji('current');
       const item = dataGaji.find(g => g.id === stafId);
@@ -852,7 +1064,7 @@
           tglMulai: document.getElementById('izinTglMulai').value,
           tglSelesai: document.getElementById('izinTglSelesai').value,
           keterangan: document.getElementById('izinKeterangan').value,
-          status: 'Disetujui' // Auto-approve untuk tailor
+          status: 'Disetujui'
         };
 
         state.izin.unshift(pengajuan);
@@ -1010,7 +1222,6 @@
     const setRad = document.getElementById('setRadiusToleransi');
     const btnAmbilLokasi = document.getElementById('btnAmbilLokasiSekarang');
 
-    // Pasang nilai default
     if (setNama) setNama.value = state.pengaturan.namaWorkshop;
     if (setAlamat) setAlamat.value = state.pengaturan.alamatWorkshop;
     if (setLat) setLat.value = state.pengaturan.latitude;
