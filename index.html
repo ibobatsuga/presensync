@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>PresenSync — Presensi Karyawan Wira Muda Tailor</title>
+  <meta name="description" content="PresenSync: Sistem Presensi GPS & Selfie Kamera untuk Wira Muda Tailor.">
+  <meta name="theme-color" content="#1e1b4b">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="ikon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="ikon.svg">
+  <link rel="stylesheet" href="style.css?v=2026112101">
+</head>
+<body>
+
+  <!-- Kontainer Aplikasi Utama -->
+  <div class="wadah-app">
+    
+    <!-- Sidebar / Navigasi -->
+    <aside class="nav-samping">
+      <div class="brand-wadah">
+        <div class="brand-logo">
+          <img src="ikon.svg" alt="PresenSync" width="38" height="38">
+        </div>
+        <div class="brand-teks">
+          <span class="brand-nama">PresenSync</span>
+          <span class="brand-sub">Wira Muda Tailor</span>
+          <span class="brand-status"><span class="titik-online"></span> GPS Siap</span>
+        </div>
+      </div>
+
+      <nav class="daftar-nav">
+        <button class="nav-item aktif" data-target="hal-presensi">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
+          <span>Presensi</span>
+        </button>
+        <button class="nav-item" data-target="hal-izin">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          <span>Izin & Cuti</span>
+        </button>
+        <button class="nav-item" data-target="hal-log">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span>Log & Kalender</span>
+        </button>
+        <button class="nav-item" data-target="hal-gaji">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
+          <span>Rekap Gaji</span>
+        </button>
+        <button class="nav-item" data-target="hal-karyawan">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span>Staf & Setting</span>
+        </button>
+      </nav>
+
+      <div class="info-footer">
+        <div class="jam-box">
+          <div class="jam-angka" id="jamDigital">00:00:00</div>
+          <div class="tgl-teks" id="tglDigital">Senin, 1 Jan 2026</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Konten Halaman -->
+    <main class="konten-halaman">
+
+      <!-- ========================================== -->
+      <!-- TAB 1: TERMINAL PRESENSI -->
+      <!-- ========================================== -->
+      <section id="hal-presensi" class="halaman aktif">
+        <div class="tata-presensi">
+          
+          <!-- Sisi Kiri: Form & Kamera -->
+          <div class="kartu-terminal">
+            <div class="kepala-terminal">
+              <div>
+                <h2>Terminal Presensi Staf</h2>
+                <p>Silakan ambil foto selfie dan verifikasi lokasi workshop.</p>
+              </div>
+              <span class="badge-workshop">📍 Wira Muda Tailor</span>
+            </div>
+
+            <div class="grid-terminal-isi">
+              <!-- Pilih Karyawan & Shift -->
+              <div class="form-grup">
+                <label for="selectKaryawan">Nama Staf / Karyawan *</label>
+                <select id="selectKaryawan" class="input-select-karyawan">
+                  <!-- Diisi dinamis -->
+                </select>
+              </div>
+
+              <div class="form-grup">
+                <label for="selectShift">Shift Kerja *</label>
+                <select id="selectShift">
+                  <option value="pagi">Shift Pagi (08:00 - 17:00 WIB)</option>
+                  <option value="lembur">Shift Lembur / Malam (13:00 - 21:00 WIB)</option>
+                  <option value="fleksibel">Shift Fleksibel (Proyek Borongan)</option>
+                </select>
+              </div>
+
+              <!-- Status GPS Geofence -->
+              <div class="kartu-geofence" id="wadahGeofence">
+                <div class="geofence-ikon" id="ikonGeofence">🛰️</div>
+                <div class="geofence-info">
+                  <strong id="labelStatusGps">Mendeteksi Titik GPS...</strong>
+                  <p id="labelJarakGps">Mohon izinkan akses lokasi perangkat.</p>
+                </div>
+                <button type="button" class="btn-cek-gps" id="btnRefreshGps" title="Segarkan GPS">🔄 Cek</button>
+              </div>
+
+              <!-- Kamera Selfie Preview -->
+              <div class="kamera-wadah">
+                <div class="kamera-viewfinder" id="wadahKamera">
+                  <video id="videoSelfie" autoplay playsinline muted></video>
+                  <canvas id="canvasSelfie" hidden></canvas>
+                  <img id="imgSelfiePreview" src="" alt="Selfie" hidden>
+                  <div class="kamera-placeholder" id="placeholderKamera">
+                    <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                    <span>Kamera Belum Aktif</span>
+                  </div>
+                </div>
+
+                <div class="kamera-kontrol">
+                  <button type="button" class="btn-sekunder" id="btnNyalakanKamera">📷 Buka Kamera</button>
+                  <button type="button" class="btn-utama" id="btnAmbilFoto" disabled>📸 Jepret Foto</button>
+                  <button type="button" class="btn-sekunder" id="btnUlangFoto" hidden>🔄 Foto Ulang</button>
+                </div>
+              </div>
+
+              <!-- Tombol Aksi Check-In & Check-Out -->
+              <div class="baris-aksi-presensi">
+                <button type="button" class="btn-presensi btn-masuk" id="btnCheckIn">
+                  <span class="aksi-ikon">🟢</span>
+                  <div>
+                    <strong>CATAT MASUK</strong>
+                    <small>Mulai jam kerja</small>
+                  </div>
+                </button>
+                <button type="button" class="btn-presensi btn-pulang" id="btnCheckOut">
+                  <span class="aksi-ikon">🔴</span>
+                  <div>
+                    <strong>CATAT PULANG</strong>
+                    <small>Selesai jam kerja</small>
+                  </div>
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Sisi Kanan: Status Hari Ini & Ringkasan -->
+          <div class="panel-ringkasan-presensi">
+            <div class="kartu-status-hari-ini">
+              <h3>Kehadiran Hari Ini</h3>
+              <p class="tgl-sub" id="labelTglHariIni">21 November 2026</p>
+              
+              <div class="stat-pills-row">
+                <div class="stat-mini">
+                  <span>Hadir</span>
+                  <strong class="teks-sukses" id="miniHadirCount">0</strong>
+                </div>
+                <div class="stat-mini">
+                  <span>Telat</span>
+                  <strong class="teks-peringatan" id="miniTelatCount">0</strong>
+                </div>
+                <div class="stat-mini">
+                  <span>Izin/Cuti</span>
+                  <strong class="teks-info" id="miniIzinCount">0</strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="daftar-log-terbaru">
+              <h4>Aktivitas Staf Hari Ini</h4>
+              <div class="wadah-feed-hari-ini" id="feedHariIni">
+                <!-- Log feed diisi JS -->
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- TAB 2: PENGAJUAN IZIN & CUTI -->
+      <!-- ========================================== -->
+      <section id="hal-izin" class="halaman">
+        <div class="kepala-halaman">
+          <div>
+            <h1>Form Izin & Cuti Staf</h1>
+            <p>Pengajuan izin sakit, cuti tahunan, atau keperluan mendesak.</p>
+          </div>
+          <button type="button" class="btn-utama" id="btnBukaModalIzin">+ Ajukan Izin / Cuti</button>
+        </div>
+
+        <div class="kartu-tabel">
+          <div class="tabel-gulir">
+            <table class="tabel-data">
+              <thead>
+                <tr>
+                  <th>Karyawan</th>
+                  <th>Jenis</th>
+                  <th>Mulai</th>
+                  <th>Sampai</th>
+                  <th>Keterangan</th>
+                  <th>Status</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyIzin">
+                <!-- Diisi via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- TAB 3: LOG & KALENDER KEHADIRAN -->
+      <!-- ========================================== -->
+      <section id="hal-log" class="halaman">
+        <div class="kepala-halaman">
+          <div>
+            <h1>Log & Riwayat Presensi</h1>
+            <p>Catatan foto selfie masuk, koordinat GPS, dan kalkulasi jam kerja.</p>
+          </div>
+          <div class="filter-baris">
+            <input type="date" id="filterTglLog">
+            <select id="filterKaryawanLog">
+              <option value="semua">Semua Staf</option>
+            </select>
+            <button type="button" class="btn-sekunder" id="btnResetFilterLog">Reset</button>
+          </div>
+        </div>
+
+        <div class="kartu-tabel">
+          <div class="tabel-gulir">
+            <table class="tabel-data">
+              <thead>
+                <tr>
+                  <th>Foto</th>
+                  <th>Nama Staf</th>
+                  <th>Tanggal</th>
+                  <th>Shift</th>
+                  <th>Masuk</th>
+                  <th>Pulang</th>
+                  <th>Durasi Kerja</th>
+                  <th>Ketepatan</th>
+                  <th>Lokasi GPS</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyLog">
+                <!-- Diisi via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- TAB 4: REKAPITULASI GAJI (PAYROLL) -->
+      <!-- ========================================== -->
+      <section id="hal-gaji" class="halaman">
+        <div class="kepala-halaman">
+          <div>
+            <h1>Rekapitulasi Gaji & Kehadiran</h1>
+            <p>Perhitungan gaji otomatis berdasarkan kehadiran, lembur, dan potongan telat.</p>
+          </div>
+          <div class="filter-baris">
+            <select id="selectBulanGaji">
+              <option value="current">Bulan Ini</option>
+              <option value="all">Semua Data</option>
+            </select>
+            <button type="button" class="btn-utama" id="btnEksporCsvGaji">📥 Ekspor CSV Gaji</button>
+          </div>
+        </div>
+
+        <div class="kartu-tabel">
+          <div class="tabel-gulir">
+            <table class="tabel-data">
+              <thead>
+                <tr>
+                  <th>Nama Staf</th>
+                  <th>Jabatan</th>
+                  <th>Hari Masuk</th>
+                  <th>Total Jam</th>
+                  <th>Hari Telat</th>
+                  <th>Gaji Pokok</th>
+                  <th>Tunjangan</th>
+                  <th>Potongan</th>
+                  <th>Total Bersih</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyGaji">
+                <!-- Diisi via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- TAB 5: MANAJEMEN STAF & PENGATURAN -->
+      <!-- ========================================== -->
+      <section id="hal-karyawan" class="halaman">
+        <div class="kepala-halaman">
+          <div>
+            <h1>Manajemen Staf & Workshop</h1>
+            <p>Atur staf Wira Muda Tailor, tarif upah harian, dan radius GPS workshop.</p>
+          </div>
+          <button type="button" class="btn-utama" id="btnTambahStaf">+ Tambah Staf Baru</button>
+        </div>
+
+        <div class="grid-pengaturan">
+          <!-- Tabel Staf -->
+          <div class="kartu-pengaturan kolom-penuh">
+            <h3>Daftar Staf Wira Muda Tailor</h3>
+            <div class="tabel-gulir">
+              <table class="tabel-data">
+                <thead>
+                  <tr>
+                    <th>Nama Staf</th>
+                    <th>Jabatan</th>
+                    <th>Upah Harian</th>
+                    <th>Tunjangan Hadir</th>
+                    <th>Denda Telat/Menit</th>
+                    <th>Status</th>
+                    <th>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyStafAdmin">
+                  <!-- Diisi JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Pengaturan Workshop & GPS -->
+          <div class="kartu-pengaturan">
+            <h3>Lokasi Workshop & Geofence</h3>
+            <form id="formSettingWorkshop">
+              <div class="bidang-form">
+                <label for="setNamaWorkshop">Nama Workshop / Usaha</label>
+                <input type="text" id="setNamaWorkshop" required value="Wira Muda Tailor">
+              </div>
+              <div class="bidang-form">
+                <label for="setAlamatWorkshop">Alamat Workshop</label>
+                <input type="text" id="setAlamatWorkshop" value="Jl. Mode Busana No. 18, Sentra Konveksi">
+              </div>
+              <div class="baris-ganda">
+                <div class="bidang-form">
+                  <label for="setLatitude">Latitude Kantor</label>
+                  <input type="number" id="setLatitude" step="0.000001" value="-6.200000">
+                </div>
+                <div class="bidang-form">
+                  <label for="setLongitude">Longitude Kantor</label>
+                  <input type="number" id="setLongitude" step="0.000001" value="106.816666">
+                </div>
+              </div>
+              <div class="bidang-form">
+                <label for="setRadiusToleransi">Radius Maksimal (Meter)</label>
+                <input type="number" id="setRadiusToleransi" value="100" min="10">
+                <small class="bantu">Jarak toleransi absensi dari titik workshop (default: 100m).</small>
+              </div>
+              <div class="baris-tombol-inline">
+                <button type="button" class="btn-sekunder" id="btnAmbilLokasiSekarang">📍 Gunakan Lokasi Saya Sekarang</button>
+                <button type="submit" class="btn-utama">Simpan Lokasi</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Backup & Ekspor Data -->
+          <div class="kartu-pengaturan">
+            <h3>Cadangan & Pemulihan Data</h3>
+            <p class="redup-kecil">Data presensi tersimpan lokal dan aman di browser perangkat.</p>
+            <div class="baris-tombol-backup">
+              <button type="button" class="btn-sekunder" id="btnBackupJson">💾 Unduh Backup Data (JSON)</button>
+              <label class="btn-sekunder tombol-file">
+                📂 Pulihkan Data dari JSON
+                <input type="file" id="inputRestoreJson" accept=".json" hidden>
+              </label>
+              <button type="button" class="btn-sekunder" id="btnEksporLogCsv">📑 Ekspor Semua Log Presensi (CSV)</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- MODAL: AJUKAN IZIN / CUTI -->
+  <div id="modalFormIzin" class="modal-latar" hidden>
+    <div class="modal-kotak">
+      <div class="modal-kepala">
+        <h3>Pengajuan Izin / Cuti</h3>
+        <button type="button" class="btn-tutup-modal" id="btnTutupModalIzin">✕</button>
+      </div>
+      <form id="formIzin" class="modal-badan">
+        <div class="bidang-form">
+          <label for="izinKaryawan">Nama Karyawan *</label>
+          <select id="izinKaryawan" required></select>
+        </div>
+        <div class="bidang-form">
+          <label for="izinJenis">Kategori Pengajuan *</label>
+          <select id="izinJenis" required>
+            <option value="Sakit">Sakit (Dengan/Tanpa Surat)</option>
+            <option value="Izin Keperluan">Izin Keperluan Mendesak</option>
+            <option value="Cuti Tahunan">Cuti Tahunan</option>
+          </select>
+        </div>
+        <div class="baris-ganda">
+          <div class="bidang-form">
+            <label for="izinTglMulai">Tanggal Mulai *</label>
+            <input type="date" id="izinTglMulai" required>
+          </div>
+          <div class="bidang-form">
+            <label for="izinTglSelesai">Tanggal Selesai *</label>
+            <input type="date" id="izinTglSelesai" required>
+          </div>
+        </div>
+        <div class="bidang-form">
+          <label for="izinKeterangan">Keterangan / Alasan *</label>
+          <textarea id="izinKeterangan" rows="3" required placeholder="Tuliskan alasan izin/cuti..."></textarea>
+        </div>
+        <div class="modal-kaki">
+          <button type="button" class="btn-sekunder" id="btnBatalIzin">Batal</button>
+          <button type="submit" class="btn-utama">Kirim Pengajuan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: TAMBAH / UBAH STAF -->
+  <div id="modalFormStaf" class="modal-latar" hidden>
+    <div class="modal-kotak">
+      <div class="modal-kepala">
+        <h3 id="judulModalStaf">Tambah Staf Tailor</h3>
+        <button type="button" class="btn-tutup-modal" id="btnTutupModalStaf">✕</button>
+      </div>
+      <form id="formStaf" class="modal-badan">
+        <input type="hidden" id="formStafId">
+        <div class="bidang-form">
+          <label for="formStafNama">Nama Lengkap *</label>
+          <input type="text" id="formStafNama" required placeholder="Contoh: Budi Santoso">
+        </div>
+        <div class="bidang-form">
+          <label for="formStafJabatan">Jabatan / Bagian *</label>
+          <input type="text" id="formStafJabatan" required placeholder="Penjahit Utama, Pemotong Pola, Finishing..." list="listJabatan">
+          <datalist id="listJabatan">
+            <option value="Penjahit Utama">
+            <option value="Pemotong Pola">
+            <option value="Finishing & Kancing">
+            <option value="Bordir & Payet">
+            <option value="Admin & Pengukuran">
+          </datalist>
+        </div>
+        <div class="baris-ganda">
+          <div class="bidang-form">
+            <label for="formStafGajiHarian">Upah Pokok Harian (Rp) *</label>
+            <input type="number" id="formStafGajiHarian" required min="0" step="1000" placeholder="120000">
+          </div>
+          <div class="bidang-form">
+            <label for="formStafTunjanganHarian">Uang Makan / Hadir (Rp)</label>
+            <input type="number" id="formStafTunjanganHarian" min="0" step="1000" placeholder="25000">
+          </div>
+        </div>
+        <div class="bidang-form">
+          <label for="formStafDendaTelat">Potongan Telat / Menit (Rp)</label>
+          <input type="number" id="formStafDendaTelat" min="0" step="100" value="500">
+        </div>
+        <div class="modal-kaki">
+          <button type="button" class="btn-sekunder" id="btnBatalStaf">Batal</button>
+          <button type="submit" class="btn-utama">Simpan Staf</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: CETAK SLIP GAJI -->
+  <div id="modalSlipGaji" class="modal-latar" hidden>
+    <div class="modal-kotak modal-slip-wadah">
+      <div class="modal-kepala no-print">
+        <h3>Slip Gaji Karyawan</h3>
+        <button type="button" class="btn-tutup-modal" id="btnTutupSlip">✕</button>
+      </div>
+
+      <!-- KERTAS SLIP GAJI -->
+      <div class="kertas-slip" id="kertasSlip">
+        <div class="slip-header">
+          <h2>WIRA MUDA TAILOR</h2>
+          <p id="slipAlamat">Jl. Mode Busana No. 18, Sentra Konveksi</p>
+          <div class="slip-garis">=============================================</div>
+          <h3>SLIP GAJI KARYAWAN</h3>
+          <p id="slipPeriode">Periode: November 2026</p>
+        </div>
+
+        <div class="slip-meta-grid">
+          <div><span>Nama:</span> <b id="slipNama">-</b></div>
+          <div><span>Jabatan:</span> <b id="slipJabatan">-</b></div>
+          <div><span>Hari Hadir:</span> <b id="slipHariHadir">0 hari</b></div>
+          <div><span>Total Jam:</span> <b id="slipTotalJam">0 jam</b></div>
+        </div>
+
+        <div class="slip-garis">---------------------------------------------</div>
+
+        <div class="slip-rincian">
+          <div class="slip-baris">
+            <span>Gaji Pokok</span>
+            <span id="slipGajiPokok">Rp0</span>
+          </div>
+          <div class="slip-baris">
+            <span>Uang Makan & Hadir</span>
+            <span id="slipTunjangan">Rp0</span>
+          </div>
+          <div class="slip-baris teks-merah" id="barisSlipPotongan">
+            <span>Potongan Keterlambatan</span>
+            <span id="slipPotongan">-Rp0</span>
+          </div>
+          <div class="slip-garis">---------------------------------------------</div>
+          <div class="slip-baris slip-total">
+            <span>TOTAL DITERIMA (TAKE HOME PAY)</span>
+            <strong id="slipTotalBersih">Rp0</strong>
+          </div>
+        </div>
+
+        <div class="slip-footer">
+          <div class="slip-ttd-box">
+            <div>
+              <p>Penerima,</p>
+              <br><br>
+              <p>( <span id="slipTtdNama">Staf</span> )</p>
+            </div>
+            <div>
+              <p>Manajemen Tailor,</p>
+              <br><br>
+              <p>( Wira Muda Tailor )</p>
+            </div>
+          </div>
+          <p class="slip-note">Dokumen resmi dihasilkan secara otomatis oleh sistem PresenSync.</p>
+        </div>
+      </div>
+
+      <div class="modal-kaki no-print">
+        <button type="button" class="btn-sekunder" id="btnTutupSlipKaki">Tutup</button>
+        <button type="button" class="btn-utama" id="btnCetakSlip">🖨️ Cetak Slip Gaji</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js?v=2026112101"></script>
+</body>
+</html>
